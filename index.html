@@ -2,81 +2,125 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NumSign</title>
     <style>
-        canvas#cav {
-            /*
-            width: 1;
-            height: 1; 
-            */
+        * {
+            box-sizing: border-box;
         }
-        #app {
-            width: 0.99;
-            height: 0.99;
-            color: white;
-            background: #232225;
-            display: flex;
-            flex:auto;
-            flex-direction: column; /* 竖向排列 */
-            align-items: center; /* 水平居中 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            overflow-x: hidden;
         }
         body {
             background: #111;
-        }
-        html {
             font-family: sans-serif;
         }
-
-        div:first-of-type {
-        display: flex;
-        align-items: flex-start;
-        margin-bottom: 5px;
+        #app {
+            width: 100%;
+            min-height: 100vh;
+            color: white;
+            background: #232225;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
         }
-
+        #top {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        #numsign h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        fieldset {
+            border: 1px solid #444;
+            margin: 0;
+            padding: 10px;
+        }
+        legend {
+            font-size: 14px;
+        }
+        fieldset > div {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
         label {
-        margin-right: 15px;
-        line-height: 32px;
+            margin-right: 5px;
+            line-height: 28px;
+            font-size: 14px;
         }
-
         input {
-        appearance: none;
-
-        border-radius: 50%;
-        width: 16px;
-        height: 16px;
-
-        border: 2px solid #999;
-        transition: 0.2s all linear;
-        margin-right: 5px;
-
-        position: relative;
-        top: 4px;
+            appearance: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #999;
+            transition: 0.2s all linear;
+            margin-right: 5px;
+            position: relative;
+            top: 2px;
         }
-
         input:checked {
-        border: 6px solid rgb(218, 218, 218);
+            border: 6px solid rgb(218, 218, 218);
         }
-
-        button{
-        margin:20px;
-        color: white;
-        background-color: #282235;
-        padding: 5px 10px;
-        border-radius: 0;
-        border: 0;
-        font-size: 14px;
+        button {
+            margin: 10px;
+            color: white;
+            background-color: #282235;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 0;
+            font-size: 16px;
+            cursor: pointer;
         }
-
         button:hover,
         button:focus {
-        color: #999;
+            color: #999;
         }
-
         button:active {
-        background-color: white;
-        color: black;
-        outline: 1px solid black;
+            background-color: white;
+            color: black;
+            outline: 1px solid black;
+        }
+        #cav {
+            border: 2px solid #444;
+            background: #000;
+            max-width: 90vw;
+            max-height: 60vh;
+            touch-action: none;
+        }
+        #lable {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+            width: 100%;
+        }
+        #lable h2 {
+            margin: 5px 0;
+            font-size: 16px;
+            text-align: center;
+        }
+        #res h2 {
+            font-size: 24px;
+            color: #4CAF50;
         }
     </style>
 </head>
@@ -91,7 +135,7 @@
               <legend>colors</legend>
               <div>
                 <input type="radio" id="contactChoice1" name="contact" value=4 checked />
-                <label for="contactChoice1">wihte</label>
+                <label for="contactChoice1">white</label>
                 <input type="radio" id="contactChoice2" name="contact" value=1 />
                 <label for="contactChoice2">red</label>
                 <input type="radio" id="contactChoice3" name="contact" value=0 />
