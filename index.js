@@ -29,42 +29,22 @@ const render = () => {
         }
     }
 }
-
-const setupCanvas = () => {
-    const availableWidth = window.innerWidth - 40
-    const availableHeight = window.innerHeight * 0.5
-    const size = Math.min(availableWidth, availableHeight, 400)
-    cav.width = size
-    cav.height = size
-    render()
-}
-
-setupCanvas()
-window.addEventListener('resize', setupCanvas)
+render()
 
 let d = false
 document.getElementById("ok").style.visibility = "hidden"
 
-const getCanvasCoords = (clientX, clientY) => {
-    const rect = cav.getBoundingClientRect()
-    const x = clientX - rect.left
-    const y = clientY - rect.top
-    return { x, y }
-}
-
-const fo = document.querySelectorAll("input")
-
-const startDrawing = () => {
+cav.addEventListener("mousedown", () => {
     d = true
     document.getElementById("ok").style.visibility = "hidden"
-}
-
-const stopDrawing = () => {
+})
+cav.addEventListener("mouseup", () => {
     d = false
     document.getElementById("ok").style.visibility = "visible"
-}
+})
 
-const draw = (clientX, clientY) => {
+const fo = document.querySelectorAll("input")
+cav.addEventListener("mousemove", (e) => {
     if (!d) return
     let color = 1
     fo.forEach((it) => {
@@ -72,44 +52,13 @@ const draw = (clientX, clientY) => {
             color = it.value
         }
     })
-    const coords = getCanvasCoords(clientX, clientY)
-    let y = Math.floor(coords.y / cav.height * Y)
-    let x = Math.floor(coords.x / cav.width * X)
+    let y = Math.floor(e.offsetY / cav.height * Y)
+    let x = Math.floor(e.offsetX / cav.width * X)
     if (y >= 0 && y < Y && x >= 0 && x < X) {
         Img[y][x] = numTocolor[color]
         render()
     }
-}
-
-cav.addEventListener("mousedown", startDrawing)
-cav.addEventListener("mouseup", stopDrawing)
-cav.addEventListener("mouseleave", stopDrawing)
-cav.addEventListener("mousemove", (e) => {
-    draw(e.clientX, e.clientY)
 }, false)
-
-cav.addEventListener("touchstart", (e) => {
-    e.preventDefault()
-    const touch = e.touches[0]
-    startDrawing()
-    draw(touch.clientX, touch.clientY)
-}, { passive: false })
-
-cav.addEventListener("touchmove", (e) => {
-    e.preventDefault()
-    const touch = e.touches[0]
-    draw(touch.clientX, touch.clientY)
-}, { passive: false })
-
-cav.addEventListener("touchend", (e) => {
-    e.preventDefault()
-    stopDrawing()
-}, { passive: false })
-
-cav.addEventListener("touchcancel", (e) => {
-    e.preventDefault()
-    stopDrawing()
-}, { passive: false })
 
 const reset = document.getElementById("reset")
 reset.addEventListener("mousedown", () => {
@@ -215,7 +164,99 @@ const getFinalNodesVal = () => {
     return finalNodesVal
 }
 
+// 图像预处理：找到边界 + 居中 + 缩放到max(m,n)=20
+const preprocessImage = (imgData) => {
+    // 第一步：找到数字的边界
+    let minRow = 27, maxRow = 0, minCol = 27, maxCol = 0
+    let hasContent = false
+    
+    for (let y = 0; y < 28; y++) {
+        for (let x = 0; x < 28; x++) {
+            const color = imgData[y][x]
+            if (color === numTocolor[1] || color === numTocolor[3] || color === numTocolor[4]) {
+                hasContent = true
+                if (y < minRow) minRow = y
+                if (y > maxRow) maxRow = y
+                if (x < minCol) minCol = x
+                if (x > maxCol) maxCol = x
+            }
+        }
+    }
+    
+    // 如果没有内容，返回空图像
+    if (!hasContent) {
+        const emptyImg = new Array(28).fill(0).map(() => new Array(28).fill(0))
+        return emptyImg
+    }
+    
+    const width = maxCol - minCol + 1
+    const height = maxRow - minRow + 1
+    const maxDim = Math.max(width, height)
+    
+    // 计算缩放比例，使得maxDim = 20
+    const scale = 20.0 / maxDim
+    
+    // 创建新的28x28图像，初始为全黑
+    const newImg = new Array(28).fill(0).map(() => new Array(28).fill(0))
+    
+    // 计算居中位置
+    const newWidth = Math.round(width * scale)
+    const newHeight = Math.round(height * scale)
+    const offsetX = Math.floor((28 - newWidth) / 2)
+    const offsetY = Math.floor((28 - newHeight) / 2)
+    
+    // 双线性插值缩放（抗锯齿效果，类似MNIST）
+    for (let newY = 0; newY < newHeight; newY++) {
+        for (let newX = 0; newX < newWidth; newX++) {
+            // 计算在原图中的对应位置
+            const origX = minCol + (newX + 0.5) / scale - 0.5
+            const origY = minRow + (newY + 0.5) / scale - 0.5
+            
+            // 双线性插值
+            const x0 = Math.floor(origX)
+            const x1 = x0 + 1
+            const y0 = Math.floor(origY)
+            const y1 = y0 + 1
+            
+            const dx = origX - x0
+            const dy = origY - y0
+            
+            // 获取四个角的像素值
+            const getPixel = (x, y) => {
+                if (x >= 0 && x < 28 && y >= 0 && y < 28) {
+                    const color = imgData[y][x]
+                    return (color === numTocolor[1] || color === numTocolor[3] || color === numTocolor[4]) ? 1.0 : 0.0
+                }
+                return 0.0
+            }
+            
+            const v00 = getPixel(x0, y0)
+            const v01 = getPixel(x0, y1)
+            const v10 = getPixel(x1, y0)
+            const v11 = getPixel(x1, y1)
+            
+            // 双线性插值
+            const val = (1 - dx) * (1 - dy) * v00 +
+                       dx * (1 - dy) * v10 +
+                       (1 - dx) * dy * v01 +
+                       dx * dy * v11
+            
+            // 写入新图像
+            const destX = offsetX + newX
+            const destY = offsetY + newY
+            if (destX >= 0 && destX < 28 && destY >= 0 && destY < 28) {
+                newImg[destY][destX] = val
+            }
+        }
+    }
+    
+    return newImg
+}
+
 const predict = (imgData) => {
+    // 先进行图像预处理
+    const processedImg = preprocessImage(imgData)
+    
     if (!networkData || !networkData.layers) {
         console.error("模型还没加载喵！")
         return -1
@@ -245,10 +286,8 @@ const predict = (imgData) => {
 
                     let pixelVal = 0
                     if (f_i >= 0 && f_i < 28 && s_i >= 0 && s_i < 28) {
-                        const color = imgData[f_i][s_i]
-                        if (color === numTocolor[1] || color === numTocolor[3] || color === numTocolor[4]) {
-                            pixelVal = 1.0
-                        }
+                        // 使用处理后的图像的像素值
+                        pixelVal = processedImg[f_i][s_i]
                     }
 
                     const weightedVal = pixelVal * overlapArea
