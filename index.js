@@ -13,6 +13,16 @@ const Y = 28
 
 const Img = new Array(Y).fill(0).map(() => new Array(X).fill(numTocolor[0]))
 
+// 初始化canvas大小 - 自适应屏幕
+const setupCanvas = () => {
+    const containerWidth = Math.min(window.innerWidth * 0.9, 600)
+    const containerHeight = Math.min(window.innerHeight * 0.6, 600)
+    const size = Math.min(containerWidth, containerHeight)
+    cav.width = size
+    cav.height = size
+    render()
+}
+
 const fill = (num) => {
     for (let y = 0; y < Y; y++) {
         for (let x = 0; x < X; x++) {
@@ -29,11 +39,32 @@ const render = () => {
         }
     }
 }
+
+// 获取坐标的辅助函数 - 支持触摸和鼠标
+const getCoords = (e) => {
+    const rect = cav.getBoundingClientRect()
+    let clientX, clientY
+    
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX
+        clientY = e.touches[0].clientY
+    } else {
+        clientX = e.clientX
+        clientY = e.clientY
+    }
+    
+    const x = Math.floor((clientX - rect.left) / rect.width * X)
+    const y = Math.floor((clientY - rect.top) / rect.height * Y)
+    return { x, y }
+}
+
+setupCanvas()
 render()
 
 let d = false
 document.getElementById("ok").style.visibility = "hidden"
 
+// 鼠标事件
 cav.addEventListener("mousedown", () => {
     d = true
     document.getElementById("ok").style.visibility = "hidden"
@@ -52,13 +83,52 @@ cav.addEventListener("mousemove", (e) => {
             color = it.value
         }
     })
-    let y = Math.floor(e.offsetY / cav.height * Y)
-    let x = Math.floor(e.offsetX / cav.width * X)
-    if (y >= 0 && y < Y && x >= 0 && x < X) {
-        Img[y][x] = numTocolor[color]
+    const coords = getCoords(e)
+    if (coords.y >= 0 && coords.y < Y && coords.x >= 0 && coords.x < X) {
+        Img[coords.y][coords.x] = numTocolor[color]
         render()
     }
 }, false)
+
+// 触摸事件
+cav.addEventListener("touchstart", (e) => {
+    e.preventDefault()
+    d = true
+    document.getElementById("ok").style.visibility = "hidden"
+})
+
+cav.addEventListener("touchend", (e) => {
+    e.preventDefault()
+    d = false
+    document.getElementById("ok").style.visibility = "visible"
+})
+
+cav.addEventListener("touchcancel", (e) => {
+    e.preventDefault()
+    d = false
+    document.getElementById("ok").style.visibility = "visible"
+})
+
+cav.addEventListener("touchmove", (e) => {
+    e.preventDefault()
+    if (!d) return
+    let color = 1
+    fo.forEach((it) => {
+        if (it.checked === true) {
+            color = it.value
+        }
+    })
+    const coords = getCoords(e)
+    if (coords.y >= 0 && coords.y < Y && coords.x >= 0 && coords.x < X) {
+        Img[coords.y][coords.x] = numTocolor[color]
+        render()
+    }
+}, false)
+
+// 窗口大小改变时重新调整canvas
+window.addEventListener("resize", () => {
+    setupCanvas()
+})
 
 const reset = document.getElementById("reset")
 reset.addEventListener("mousedown", () => {
