@@ -66,6 +66,7 @@ document.getElementById("ok").style.visibility = "hidden"
 
 // 鼠标事件
 cav.addEventListener("mousedown", () => {
+    commitPending()
     d = true
     document.getElementById("ok").style.visibility = "hidden"
 })
@@ -93,6 +94,7 @@ cav.addEventListener("mousemove", (e) => {
 // 触摸事件
 cav.addEventListener("touchstart", (e) => {
     e.preventDefault()
+    commitPending()
     d = true
     document.getElementById("ok").style.visibility = "hidden"
 })
@@ -132,6 +134,7 @@ window.addEventListener("resize", () => {
 
 const reset = document.getElementById("reset")
 reset.addEventListener("mousedown", () => {
+    commitPending()
     fill(0)
     render()
     document.getElementById("res").innerHTML = "<h2>PLEASE WRITE A NUMBER</h2>"
@@ -388,6 +391,27 @@ const predict = (imgData) => {
 }
 
 let lastProcessedImg = null
+let pendingLabel = null
+let selectedBtn = null
+
+const commitPending = async () => {
+    if (pendingLabel !== null && lastProcessedImg) {
+        await submitSample(pendingLabel, lastProcessedImg)
+        pendingLabel = null
+        lastProcessedImg = null
+        selectedBtn = null
+    }
+}
+
+const clearLabelButtons = () => {
+    const btns = document.querySelectorAll('.correctBtn')
+    btns.forEach(b => {
+        b.style.background = '#333'
+        b.style.borderColor = '#555'
+        b.disabled = false
+        b.textContent = b.dataset.n
+    })
+}
 
 const submitSample = async (label, img) => {
     try {
@@ -411,22 +435,35 @@ document.getElementById("ok").addEventListener("click", () => {
     const res = predict(Img)
     if (res >= 0) {
         lastProcessedImg = preprocessImage(Img)
+        pendingLabel = null
+        selectedBtn = null
         const btnHtml = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n =>
             `<button class="correctBtn" data-n="${n}" style="margin:4px;padding:6px 14px;font-size:16px;cursor:pointer;border:1px solid #555;background:#333;color:#fff;border-radius:4px;">${n}</button>`
         ).join('')
         document.getElementById("res").innerHTML = `
             <h2>Predict: ${res}</h2>
-            <p style="margin:8px 0 4px;font-size:13px;color:#aaa;">Wrong? Pick the correct digit 喵：</p>
+            <p style="margin:8px 0 4px;font-size:13px;color:#aaa;">Wrong? Pick the correct digit (click again to cancel) 喵：</p>
             <div id="correctBtns" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">${btnHtml}</div>
         `
         document.querySelectorAll('.correctBtn').forEach(btn => {
-            btn.addEventListener('click', async () => {
+            btn.addEventListener('click', () => {
                 const label = parseInt(btn.dataset.n)
-                btn.textContent = '✓'
-                btn.disabled = true
-                btn.style.background = '#4CAF50'
-                btn.style.borderColor = '#4CAF50'
-                await submitSample(label, lastProcessedImg)
+                if (pendingLabel === null) {
+                    pendingLabel = label
+                    selectedBtn = btn
+                    btn.textContent = '✓'
+                    btn.style.background = '#4CAF50'
+                    btn.style.borderColor = '#4CAF50'
+                    document.querySelectorAll('.correctBtn').forEach(b => {
+                        if (b !== btn) b.disabled = true
+                    })
+                    document.getElementById('hhh').textContent = `Selected ${label} (做出任何改动就可以保存了呢, 再次点击label可以重新选择喵)`
+                } else if (pendingLabel === label) {
+                    pendingLabel = null
+                    selectedBtn = null
+                    clearLabelButtons()
+                    document.getElementById('hhh').textContent = '...'
+                }
             })
         })
     } else {
@@ -438,6 +475,7 @@ loadModel()
 
 document.getElementById("flush").addEventListener("click", async () => {
     try {
+        await commitPending()
         const countRes = await fetch('/api/count')
         const { count } = await countRes.json()
         if (count === 0) {
