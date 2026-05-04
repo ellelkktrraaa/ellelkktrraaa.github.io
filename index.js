@@ -141,8 +141,8 @@ reset.addEventListener("mousedown", () => {
 
 const LAYER0_SIZE = 400
 const LAYER1_SIZE = 200
-const LAYER2_SIZE = 60
-const LAYER3_SIZE = 100
+const LAYER2_SIZE = 120
+const LAYER3_SIZE = 60
 const LAYER4_SIZE = 10
 const LAYER_NUM = 5
 
@@ -387,13 +387,71 @@ const predict = (imgData) => {
     return predictedClass
 }
 
+let lastProcessedImg = null
+
+const submitSample = async (label, img) => {
+    try {
+        const response = await fetch('/api/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lable: label, img })
+        })
+        const data = await response.json()
+        if (data.ok) {
+            console.log(`✅ Sample submitted as ${label} 喵`)
+            document.getElementById('hhh').textContent = `Submitted as ${label} ✓`
+        }
+    } catch (err) {
+        console.error('Submit failed 喵:', err)
+        document.getElementById('hhh').textContent = 'Submit failed...'
+    }
+}
+
 document.getElementById("ok").addEventListener("click", () => {
     const res = predict(Img)
     if (res >= 0) {
-        document.getElementById("res").innerHTML = `<h2>Predict: ${res}</h2>`
+        lastProcessedImg = preprocessImage(Img)
+        const btnHtml = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n =>
+            `<button class="correctBtn" data-n="${n}" style="margin:4px;padding:6px 14px;font-size:16px;cursor:pointer;border:1px solid #555;background:#333;color:#fff;border-radius:4px;">${n}</button>`
+        ).join('')
+        document.getElementById("res").innerHTML = `
+            <h2>Predict: ${res}</h2>
+            <p style="margin:8px 0 4px;font-size:13px;color:#aaa;">Wrong? Pick the correct digit 喵：</p>
+            <div id="correctBtns" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">${btnHtml}</div>
+        `
+        document.querySelectorAll('.correctBtn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const label = parseInt(btn.dataset.n)
+                btn.textContent = '✓'
+                btn.disabled = true
+                btn.style.background = '#4CAF50'
+                btn.style.borderColor = '#4CAF50'
+                await submitSample(label, lastProcessedImg)
+            })
+        })
     } else {
         document.getElementById("res").innerHTML = "<h2>ERROR: 模型加载失败喵</h2>"
     }
 })
 
 loadModel()
+
+document.getElementById("flush").addEventListener("click", async () => {
+    try {
+        const countRes = await fetch('/api/count')
+        const { count } = await countRes.json()
+        if (count === 0) {
+            document.getElementById('hhh').textContent = 'No samples to save 喵'
+            return
+        }
+        const flushRes = await fetch('/api/flush', { method: 'POST' })
+        const result = await flushRes.json()
+        if (result.saved) {
+            document.getElementById('hhh').textContent = `Saved ${result.count} samples ✓ 喵`
+            console.log(`🍪 Flushed ${result.count} samples 喵`)
+        }
+    } catch (err) {
+        console.error('Flush failed 喵:', err)
+        document.getElementById('hhh').textContent = 'Save failed...'
+    }
+})
